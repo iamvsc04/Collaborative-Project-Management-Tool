@@ -96,6 +96,7 @@ export const logoutUser = createAsyncThunk("auth/logout", async () => {
 const initialState = {
   user: null,
   token: localStorage.getItem("token"),
+  refreshToken: localStorage.getItem("refreshToken"),
   isAuthenticated: false,
   loading: false,
   error: null,
@@ -107,17 +108,23 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setCredentials: (state, action) => {
-      const { user, token } = action.payload;
+      const { user, token, refreshToken } = action.payload;
       state.user = user;
       state.token = token;
+      state.refreshToken = refreshToken;
       state.isAuthenticated = true;
       localStorage.setItem("token", token);
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
     },
     logout: (state) => {
       state.user = null;
       state.token = null;
+      state.refreshToken = null;
       state.isAuthenticated = false;
       localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
     },
     setLoading: (state, action) => {
       state.loading = action.payload;

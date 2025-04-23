@@ -22,12 +22,15 @@ import {
   Divider,
   Alert,
   CircularProgress,
+  Snackbar,
 } from "@mui/material";
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   PersonAdd as PersonAddIcon,
   PersonRemove as PersonRemoveIcon,
+  Save as SaveIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import {
   fetchProjectById,
@@ -36,6 +39,7 @@ import {
   addMember,
   removeMember,
 } from "../../store/slices/projectSlice";
+import { loadUser, refreshToken } from "../../store/slices/authSlice";
 
 const ProjectDetails = () => {
   const { projectId } = useParams();
@@ -44,26 +48,55 @@ const ProjectDetails = () => {
   const { currentProject, loading, error } = useSelector(
     (state) => state.projects
   );
-  const { user } = useSelector((state) => state.auth);
+  const { user, isAuthenticated, token } = useSelector((state) => state.auth);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     status: "",
   });
   const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   useEffect(() => {
-    if (projectId) {
-      console.log("Fetching project with ID:", projectId);
-      dispatch(fetchProjectById(projectId));
-    } else {
-      console.error("No project ID found in URL");
-      navigate("/projects");
-    }
-  }, [dispatch, projectId, navigate]);
+    const initializeAuth = async () => {
+      const storedToken = localStorage.getItem("token");
+      
+      if (!storedToken) {
+        navigate("/login");
+        return;
+      }
+
+      if (!isAuthenticated) {
+        try {
+          await dispatch(loadUser()).unwrap();
+        } catch (error) {
+          try {
+            await dispatch(refreshToken()).unwrap();
+            await dispatch(loadUser()).unwrap();
+          } catch (refreshError) {
+            navigate("/login");
+            return;
+          }
+        }
+      }
+
+      if (projectId) {
+        dispatch(fetchProjectById(projectId));
+      } else {
+        navigate("/projects");
+      }
+    };
+
+    initializeAuth();
+  }, [dispatch, projectId, navigate, isAuthenticated]);
 
   useEffect(() => {
     if (currentProject) {
@@ -79,8 +112,17 @@ const ProjectDetails = () => {
     try {
       await dispatch(updateProject({ id: projectId, ...formData })).unwrap();
       setEditDialogOpen(false);
+      setSnackbar({
+        open: true,
+        message: "Project updated successfully",
+        severity: "success",
+      });
     } catch (error) {
-      console.error("Error updating project:", error);
+      setSnackbar({
+        open: true,
+        message: error.message || "Failed to update project",
+        severity: "error",
+      });
     }
   };
 
@@ -90,7 +132,11 @@ const ProjectDetails = () => {
         await dispatch(deleteProject(projectId)).unwrap();
         navigate("/projects");
       } catch (error) {
-        console.error("Error deleting project:", error);
+        setSnackbar({
+          open: true,
+          message: error.message || "Failed to delete project",
+          severity: "error",
+        });
       }
     }
   };
@@ -100,17 +146,39 @@ const ProjectDetails = () => {
       await dispatch(addMember({ projectId, email: newMemberEmail })).unwrap();
       setNewMemberEmail("");
       setAddMemberDialogOpen(false);
+      setSnackbar({
+        open: true,
+        message: "Member added successfully",
+        severity: "success",
+      });
     } catch (error) {
-      console.error("Error adding member:", error);
+      setSnackbar({
+        open: true,
+        message: error.message || "Failed to add member",
+        severity: "error",
+      });
     }
   };
 
   const handleRemoveMember = async (memberId) => {
     try {
       await dispatch(removeMember({ projectId, memberId })).unwrap();
+      setSnackbar({
+        open: true,
+        message: "Member removed successfully",
+        severity: "success",
+      });
     } catch (error) {
-      console.error("Error removing member:", error);
+      setSnackbar({
+        open: true,
+        message: error.message || "Failed to remove member",
+        severity: "error",
+      });
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   if (loading) {
@@ -156,26 +224,29 @@ const ProjectDetails = () => {
             mb={2}
           >
             <Typography variant="h4">{currentProject.title}</Typography>
-            {isOwner && (
-              <Box>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  onClick={() => setEditDialogOpen(true)}
-                  sx={{ mr: 1 }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<DeleteIcon />}
-                  onClick={handleDeleteProject}
-                >
-                  Delete
-                </Button>
-              </Box>
-            )}
+            <Box>
+              <Button
+                variant="outlined"
+                startIcon={isEditing ? <SaveIcon /> : <EditIcon />}
+                onClick={() => {
+                  if (isEditing) {
+                    handleUpdateProject();
+                  }
+                  setIsEditing(!isEditing);
+                }}
+                sx={{ mr: 1 }}
+              >
+                {isEditing ? "Save" : "Edit"}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleDeleteProject}
+              >
+                Delete
+              </Button>
+            </Box>
           </Box>
           <Chip
             label={currentProject.status}
@@ -192,12 +263,30 @@ const ProjectDetails = () => {
         {/* Project Description */}
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Description
-            </Typography>
-            <Typography variant="body1" paragraph>
-              {currentProject.description}
-            </Typography>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={2}
+            >
+              <Typography variant="h6">Description</Typography>
+            </Box>
+            {isEditing ? (
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                variant="outlined"
+              />
+            ) : (
+              <Typography variant="body1" paragraph>
+                {currentProject.description}
+              </Typography>
+            )}
           </Paper>
         </Grid>
 
@@ -211,14 +300,12 @@ const ProjectDetails = () => {
               mb={2}
             >
               <Typography variant="h6">Team Members</Typography>
-              {isOwner && (
-                <Button
-                  startIcon={<PersonAddIcon />}
-                  onClick={() => setAddMemberDialogOpen(true)}
-                >
-                  Add Member
-                </Button>
-              )}
+              <Button
+                startIcon={<PersonAddIcon />}
+                onClick={() => setAddMemberDialogOpen(true)}
+              >
+                Add Member
+              </Button>
             </Box>
             <List>
               <ListItem>
@@ -240,70 +327,18 @@ const ProjectDetails = () => {
                     primary={member.name}
                     secondary={member.email}
                   />
-                  {isOwner && member._id !== user?._id && (
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleRemoveMember(member._id)}
-                    >
-                      <PersonRemoveIcon />
-                    </IconButton>
-                  )}
+                  <IconButton
+                    edge="end"
+                    onClick={() => handleRemoveMember(member._id)}
+                  >
+                    <PersonRemoveIcon />
+                  </IconButton>
                 </ListItem>
               ))}
             </List>
           </Paper>
         </Grid>
       </Grid>
-
-      {/* Edit Project Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-        <DialogTitle>Edit Project</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Title"
-            value={formData.title}
-            onChange={(e) =>
-              setFormData({ ...formData, title: e.target.value })
-            }
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Description"
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            margin="normal"
-            multiline
-            rows={4}
-          />
-          <TextField
-            fullWidth
-            select
-            label="Status"
-            value={formData.status}
-            onChange={(e) =>
-              setFormData({ ...formData, status: e.target.value })
-            }
-            margin="normal"
-            SelectProps={{
-              native: true,
-            }}
-          >
-            <option value="Not Started">Not Started</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
-          </TextField>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleUpdateProject} variant="contained">
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Add Member Dialog */}
       <Dialog
@@ -329,6 +364,21 @@ const ProjectDetails = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

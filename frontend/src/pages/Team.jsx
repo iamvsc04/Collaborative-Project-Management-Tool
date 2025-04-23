@@ -16,18 +16,25 @@ import {
   Typography,
   Avatar,
   Chip,
-  LinearProgress
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  ListItemSecondaryAction,
 } from "@mui/material";
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Group as GroupIcon,
 } from "@mui/icons-material";
-import { fetchTeam } from "../store/slices/teamSlice";
+import { fetchTeam, addTeamMember, updateMember, removeMember } from "../store/slices/teamSlice";
 
 const Team = () => {
   const dispatch = useDispatch();
   const { members, loading, error } = useSelector((state) => state.team);
+  const { user } = useSelector((state) => state.auth);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -70,17 +77,25 @@ const Team = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingMember) {
-      // Implement update member logic
-    } else {
-      // Implement add member logic
+    try {
+      if (editingMember) {
+        await dispatch(updateMember({ id: editingMember._id, ...formData })).unwrap();
+      } else {
+        await dispatch(addTeamMember(formData)).unwrap();
+      }
+      handleCloseDialog();
+    } catch (error) {
+      console.error("Error submitting form:", error);
     }
-    handleCloseDialog();
   };
 
   const handleDelete = async (memberId) => {
     if (window.confirm("Are you sure you want to remove this team member?")) {
-      // Implement delete member logic
+      try {
+        await dispatch(removeMember(memberId)).unwrap();
+      } catch (error) {
+        console.error("Error removing member:", error);
+      }
     }
   };
 
@@ -103,7 +118,7 @@ const Team = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => {/* Handle add member */}}
+          onClick={() => handleOpenDialog()}
         >
           Add Member
         </Button>
@@ -124,35 +139,29 @@ const Team = () => {
             <Grid item xs={12} sm={6} md={4} key={member._id}>
               <Card>
                 <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar
-                      src={member.avatar}
-                      alt={member.name}
-                      sx={{ width: 56, height: 56, mr: 2 }}
-                    />
+                  <Box display="flex" alignItems="center" mb={2}>
+                    <Avatar sx={{ mr: 2 }}>
+                      {member.name?.[0] || <GroupIcon />}
+                    </Avatar>
                     <Box>
                       <Typography variant="h6">{member.name}</Typography>
-                      <Typography color="text.secondary">
-                        {member.role}
-                      </Typography>
+                      <Typography color="text.secondary">{member.email}</Typography>
                     </Box>
                   </Box>
-                  <Box sx={{ mb: 2 }}>
-                    <Chip
-                      label={member.status}
-                      color={member.status === 'Active' ? 'success' : 'default'}
-                      size="small"
-                      sx={{ mr: 1 }}
-                    />
-                    <Chip
-                      label={`${member.projects.length} Projects`}
-                      color="primary"
-                      size="small"
-                    />
+                  <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
+                    <Chip label={member.role} size="small" />
+                    {member.department && (
+                      <Chip label={member.department} size="small" variant="outlined" />
+                    )}
                   </Box>
-                  <Typography variant="body2" color="text.secondary">
-                    {member.email}
-                  </Typography>
+                  <Box display="flex" justifyContent="flex-end">
+                    <IconButton onClick={() => handleOpenDialog(member)}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(member._id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
@@ -172,9 +181,7 @@ const Team = () => {
               label="Name"
               fullWidth
               value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
             />
             <TextField
@@ -183,9 +190,7 @@ const Team = () => {
               type="email"
               fullWidth
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
             />
             <TextField
@@ -194,9 +199,7 @@ const Team = () => {
               fullWidth
               select
               value={formData.role}
-              onChange={(e) =>
-                setFormData({ ...formData, role: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             >
               <MenuItem value="admin">Admin</MenuItem>
               <MenuItem value="manager">Manager</MenuItem>
@@ -207,9 +210,7 @@ const Team = () => {
               label="Department"
               fullWidth
               value={formData.department}
-              onChange={(e) =>
-                setFormData({ ...formData, department: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
             />
           </DialogContent>
           <DialogActions>

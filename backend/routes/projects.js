@@ -45,10 +45,10 @@ router.get("/:id", auth, async (req, res) => {
     }
 
     // Check if user has access to the project
-    if (
-      project.owner.toString() !== req.user.id &&
-      !project.members.includes(req.user.id)
-    ) {
+    const isOwner = project.owner._id.toString() === req.user.id;
+    const isMember = project.members.some(member => member._id.toString() === req.user.id);
+
+    if (!isOwner && !isMember) {
       return res.status(401).json({
         success: false,
         message: "Not authorized to view this project",

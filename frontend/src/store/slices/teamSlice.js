@@ -6,7 +6,7 @@ export const fetchTeam = createAsyncThunk(
   "team/fetchTeam",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get("/api/team");
+      const response = await axios.get("/team");
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || "Failed to fetch team data");
@@ -18,7 +18,7 @@ export const addTeamMember = createAsyncThunk(
   "team/addMember",
   async (memberData, { rejectWithValue }) => {
     try {
-      const response = await axios.post("/api/team/members", memberData);
+      const response = await axios.post("/team/members", memberData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || "Failed to add team member");
@@ -30,12 +30,10 @@ export const updateMember = createAsyncThunk(
   "team/updateMember",
   async ({ id, ...memberData }, { rejectWithValue }) => {
     try {
-      const res = await axios.put(`/api/team/${id}`, memberData);
-      return res.data;
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.msg || "Error updating member"
-      );
+      const response = await axios.put(`/team/members/${id}`, memberData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Failed to update member");
     }
   }
 );
@@ -44,12 +42,10 @@ export const removeMember = createAsyncThunk(
   "team/removeMember",
   async (id, { rejectWithValue }) => {
     try {
-      await axios.delete(`/api/team/${id}`);
+      await axios.delete(`/team/members/${id}`);
       return id;
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.msg || "Error removing member"
-      );
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Failed to remove member");
     }
   }
 );
@@ -84,8 +80,17 @@ const teamSlice = createSlice({
         state.error = action.payload;
       })
       // Add Member
+      .addCase(addTeamMember.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(addTeamMember.fulfilled, (state, action) => {
+        state.loading = false;
         state.members.push(action.payload);
+      })
+      .addCase(addTeamMember.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       // Update Member
       .addCase(updateMember.pending, (state) => {
