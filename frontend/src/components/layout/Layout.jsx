@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import {
   AppBar,
   Box,
@@ -16,7 +16,10 @@ import {
   Avatar,
   Menu,
   MenuItem,
-} from '@mui/material';
+  Divider,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
 import {
   Menu as MenuIcon,
   Dashboard,
@@ -24,20 +27,32 @@ import {
   Group,
   Person,
   ExitToApp,
-} from '@mui/icons-material';
-import { logout } from '../../store/slices/authSlice';
+  Add as AddIcon,
+  People as TeamIcon,
+  PersonAdd as JoinTeamIcon,
+  SupervisorAccount as EmployeesIcon,
+  ChevronLeft as ChevronLeftIcon,
+} from "@mui/icons-material";
+import { logout, toggleMenu, setMenuOpen } from "../../store/slices/authSlice";
 
 const drawerWidth = 240;
 
 const Layout = () => {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [anchorEl, setAnchorEl] = useState(null);
-  const { user } = useSelector((state) => state.auth);
+  const { user, isMenuOpen } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Set menu to closed by default on component mount
+  React.useEffect(() => {
+    dispatch(setMenuOpen(false));
+  }, [dispatch]);
+
   const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+    dispatch(toggleMenu());
   };
 
   const handleMenuOpen = (event) => {
@@ -50,26 +65,63 @@ const Layout = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login');
+    navigate("/login");
   };
 
   const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
-    { text: 'Projects', icon: <Group />, path: '/projects' },
-    { text: 'Tasks', icon: <Assignment />, path: '/tasks' },
+    { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
+    { text: "Projects", icon: <Assignment />, path: "/projects" },
+    { text: "Teams", icon: <TeamIcon />, path: "/teams" },
+    { text: "Tasks", icon: <Assignment />, path: "/tasks" },
+  ];
+
+  // Additional menu items based on user role
+  const actionItems = [
+    { text: "Create Project", icon: <AddIcon />, path: "/projects/create" },
+    ...(user?.role === "leader"
+      ? [
+          { text: "Create Team", icon: <Group />, path: "/teams/new" },
+          {
+            text: "Available Employees",
+            icon: <EmployeesIcon />,
+            path: "/employees",
+          },
+        ]
+      : [{ text: "Join Team", icon: <JoinTeamIcon />, path: "/teams/join" }]),
   ];
 
   const drawer = (
-    <div>
-      <Toolbar />
-      <List>
+    <Box
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: "background.paper",
+      }}
+    >
+      <Toolbar
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="h6" noWrap component="div">
+          PMT
+        </Typography>
+        <IconButton onClick={handleDrawerToggle}>
+          <ChevronLeftIcon />
+        </IconButton>
+      </Toolbar>
+      <Divider />
+      <List sx={{ flexGrow: 1 }}>
         {menuItems.map((item) => (
           <ListItem
             button
             key={item.text}
             onClick={() => {
               navigate(item.path);
-              setMobileOpen(false);
+              if (isMobile) setDrawerOpen(false);
             }}
           >
             <ListItemIcon>{item.icon}</ListItemIcon>
@@ -77,26 +129,42 @@ const Layout = () => {
           </ListItem>
         ))}
       </List>
-    </div>
+      <Divider />
+      <List>
+        {actionItems.map((item) => (
+          <ListItem
+            button
+            key={item.text}
+            onClick={() => {
+              navigate(item.path);
+              if (isMobile) setDrawerOpen(false);
+            }}
+          >
+            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.text} />
+          </ListItem>
+        ))}
+      </List>
+    </Box>
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <CssBaseline />
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          width: "100%",
+          zIndex: theme.zIndex.drawer + 1,
         }}
       >
         <Toolbar>
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label="toggle drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ mr: 2 }}
           >
             <MenuIcon />
           </IconButton>
@@ -119,7 +187,7 @@ const Layout = () => {
             onClose={handleMenuClose}
             onClick={handleMenuClose}
           >
-            <MenuItem onClick={() => navigate('/profile')}>
+            <MenuItem onClick={() => navigate("/profile")}>
               <ListItemIcon>
                 <Person fontSize="small" />
               </ListItemIcon>
@@ -134,47 +202,34 @@ const Layout = () => {
           </Menu>
         </Toolbar>
       </AppBar>
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+
+      <Drawer
+        variant="temporary"
+        open={isMenuOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true,
+        }}
+        sx={{
+          "& .MuiDrawer-paper": {
+            width: drawerWidth,
+            boxSizing: "border-box",
+            border: "none",
+            boxShadow: theme.shadows[8],
+          },
+        }}
       >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-            },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+        {drawer}
+      </Drawer>
+
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: "100%",
+          minHeight: "100vh",
+          backgroundColor: (theme) => theme.palette.grey[50],
         }}
       >
         <Toolbar />
@@ -184,4 +239,4 @@ const Layout = () => {
   );
 };
 
-export default Layout; 
+export default Layout;

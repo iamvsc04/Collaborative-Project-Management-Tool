@@ -4,25 +4,29 @@ const Project = require("../models/Project");
 const Task = require("../models/Task");
 const auth = require("../middleware/auth");
 
-// Get all projects
+// @route   GET /api/projects
+// @desc    Get all projects
+// @access  Private
 router.get("/", auth, async (req, res) => {
   try {
     const projects = await Project.find({
-      $or: [
-        { owner: req.user.id },
-        { members: req.user.id },
-        { "team.members": req.user.id },
-      ],
+      $or: [{ owner: req.user.id }, { members: req.user.id }],
     })
       .populate("owner", "name email")
       .populate("members", "name email")
-      .populate("team", "name")
       .sort({ createdAt: -1 });
 
-    res.json(projects);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    res.json({
+      success: true,
+      data: projects,
+    });
+  } catch (error) {
+    console.error("Get projects error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 });
 
@@ -31,95 +35,126 @@ router.get("/:id", auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
       .populate("owner", "name email")
-      .populate("members", "name email")
-      .populate("team", "name")
-      .populate("tasks");
+      .populate("members", "name email");
 
     if (!project) {
-      return res.status(404).json({ msg: "Project not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
     }
 
     // Check if user has access to the project
     if (
       project.owner.toString() !== req.user.id &&
-      !project.members.includes(req.user.id) &&
-      !project.team?.members.includes(req.user.id)
+      !project.members.includes(req.user.id)
     ) {
-      return res.status(401).json({ msg: "Not authorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized to view this project",
+      });
     }
 
-    res.json(project);
-  } catch (err) {
-    console.error(err.message);
-    if (err.kind === "ObjectId") {
-      return res.status(404).json({ msg: "Project not found" });
-    }
-    res.status(500).send("Server Error");
+    res.json({
+      success: true,
+      data: project,
+    });
+  } catch (error) {
+    console.error("Get project error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 });
 
-// Create project
+// @route   POST /api/projects
+// @desc    Create a project
+// @access  Private
 router.post("/", auth, async (req, res) => {
   try {
-    const { name, description, status, startDate, endDate, teamId } = req.body;
+    const { title, description, deadline, members } = req.body;
 
+    // Create new project with the current user as owner
     const project = new Project({
-      name,
+      title,
       description,
-      status,
-      startDate,
-      endDate,
+      deadline,
       owner: req.user.id,
-      team: teamId,
+      members: [req.user.id, ...(members || [])], // Add owner and any additional members
     });
 
     await project.save();
 
-    // If team is assigned, add project to team's projects
-    if (teamId) {
-      const team = await Team.findById(teamId);
-      if (team) {
-        team.projects.push(project._id);
-        await team.save();
-      }
-    }
+    // Populate the owner and members before sending response
+    const populatedProject = await Project.findById(project._id)
+      .populate("owner", "name email")
+      .populate("members", "name email");
 
-    res.json(project);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    res.status(201).json({
+      success: true,
+      data: populatedProject,
+    });
+  } catch (error) {
+    console.error("Create project error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 });
 
 // Update project
 router.put("/:id", auth, async (req, res) => {
   try {
-    const { name, description, status, startDate, endDate, teamId } = req.body;
+    const { title, description, status, deadline, members } = req.body;
 
     let project = await Project.findById(req.params.id);
 
     if (!project) {
-      return res.status(404).json({ msg: "Project not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
     }
 
-    // Check if user is owner or member
-    if (
-      project.owner.toString() !== req.user.id &&
-      !project.members.includes(req.user.id)
-    ) {
-      return res.status(401).json({ msg: "Not authorized" });
+    // Check if user is owner
+    if (project.owner.toString() !== req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized to update this project",
+      });
     }
+
+    const updateData = {
+      title,
+      description,
+      status,
+      deadline,
+      members: members ? [...new Set([req.user.id, ...members])] : undefined,
+    };
 
     project = await Project.findByIdAndUpdate(
       req.params.id,
-      { $set: { name, description, status, startDate, endDate, team: teamId } },
+      { $set: updateData },
       { new: true }
-    );
+    )
+      .populate("owner", "name email")
+      .populate("members", "name email");
 
-    res.json(project);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    res.json({
+      success: true,
+      data: project,
+    });
+  } catch (error) {
+    console.error("Update project error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 });
 
@@ -129,23 +164,99 @@ router.delete("/:id", auth, async (req, res) => {
     const project = await Project.findById(req.params.id);
 
     if (!project) {
-      return res.status(404).json({ msg: "Project not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
     }
 
     // Check if user is owner
     if (project.owner.toString() !== req.user.id) {
-      return res.status(401).json({ msg: "Not authorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized to delete this project",
+      });
     }
-
-    // Delete all tasks associated with the project
-    await Task.deleteMany({ project: req.params.id });
 
     await project.remove();
 
-    res.json({ msg: "Project removed" });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+    res.json({
+      success: true,
+      message: "Project deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete project error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// Join project
+router.post("/:id/join", auth, async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    // Check if user is already a member
+    if (project.members.includes(req.user.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "User is already a member of this project",
+      });
+    }
+
+    // Add user to members array
+    project.members.push(req.user.id);
+    await project.save();
+
+    const populatedProject = await Project.findById(project._id)
+      .populate("owner", "name email")
+      .populate("members", "name email");
+
+    res.json({
+      success: true,
+      data: populatedProject,
+    });
+  } catch (error) {
+    console.error("Join project error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// Get user's projects
+router.get("/user/:userId", auth, async (req, res) => {
+  try {
+    const projects = await Project.find({
+      $or: [{ owner: req.params.userId }, { members: req.params.userId }],
+    })
+      .populate("owner", "name email")
+      .populate("members", "name email")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: projects,
+    });
+  } catch (error) {
+    console.error("Get user projects error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 });
 

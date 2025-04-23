@@ -1,126 +1,96 @@
-import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { Provider } from "react-redux";
 import {
-  Box,
-  CssBaseline,
-  ThemeProvider,
-  createTheme,
-} from "@mui/material";
-import Navbar from "./components/layout/Navbar";
-import Sidebar from "./components/layout/Sidebar";
-import Dashboard from "./pages/Dashboard";
-import Projects from "./pages/projects/Projects";
-import Tasks from "./pages/Tasks";
-import Team from "./pages/Team";
-import Profile from "./pages/Profile";
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { useSelector, useDispatch } from "react-redux";
+import { useEffect } from "react";
+import { loadUser } from "./store/slices/authSlice";
+import theme from "./theme";
+import Layout from "./components/layout/Layout";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-import PrivateRoute from "./components/routing/PrivateRoute";
-import LoadingSpinner from "./components/common/LoadingSpinner";
-import Toast from "./components/common/Toast";
-import { store } from "./store";
-import { loadUser } from "./store/slices/authSlice";
-import OAuthCallback from "./pages/auth/OAuthCallback";
+import Dashboard from "./pages/Dashboard";
+import Projects from "./pages/projects/Projects";
+import CreateProject from "./pages/projects/CreateProject";
+import JoinProject from "./pages/projects/JoinProject";
+import ProjectDetails from "./pages/projects/ProjectDetails";
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#1976d2",
-    },
-    secondary: {
-      main: "#dc004e",
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: "none",
-          borderRadius: 8,
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        },
-      },
-    },
-  },
-});
-
-const AppContent = () => {
-  const dispatch = useDispatch();
+const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useSelector((state) => state.auth);
 
-  useEffect(() => {
-    console.log("AppContent mounted, loading user...");
-    dispatch(loadUser());
-  }, [dispatch]);
-
   if (loading) {
-    console.log("Loading state is true, showing spinner");
-    return <LoadingSpinner fullScreen />;
+    return <div>Loading...</div>;
   }
 
-  console.log("Rendering app content, isAuthenticated:", isAuthenticated);
+  return isAuthenticated ? children : <Navigate to="/login" />;
+};
+
+function App() {
+  const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    // Check if we have a token in localStorage
+    const token = localStorage.getItem("token");
+    if (token) {
+      // If we have a token, try to load the user
+      dispatch(loadUser());
+    }
+  }, [dispatch]);
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        {isAuthenticated ? (
-          <Box sx={{ display: "flex" }}>
-            <Navbar />
-            <Sidebar />
-            <Box
-              component="main"
-              sx={{
-                flexGrow: 1,
-                p: 3,
-                width: { sm: `calc(100% - 240px)` },
-                ml: { sm: "240px" },
-                mt: "64px",
-              }}
-            >
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/projects" element={<Projects />} />
-                <Route path="/tasks" element={<Tasks />} />
-                <Route path="/team" element={<Team />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/oauth/callback" element={<OAuthCallback />} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </Box>
-          </Box>
-        ) : (
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/oauth/callback" element={<OAuthCallback />} />
-            <Route path="*" element={<Navigate to="/login" />} />
-          </Routes>
-        )}
-        <Toast />
+      <Router
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        <Routes>
+          {/* Public routes */}
+          <Route
+            path="/login"
+            element={
+              !isAuthenticated ? <Login /> : <Navigate to="/dashboard" />
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              !isAuthenticated ? <Register /> : <Navigate to="/dashboard" />
+            }
+          />
+
+          {/* Protected routes */}
+          <Route
+            path="/"
+            element={
+              <PrivateRoute>
+                <Layout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="projects">
+              <Route index element={<Projects />} />
+              <Route path="create" element={<CreateProject />} />
+              <Route path="join" element={<JoinProject />} />
+              <Route path=":projectId" element={<ProjectDetails />} />
+            </Route>
+          </Route>
+
+          {/* Catch all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </Router>
     </ThemeProvider>
   );
-};
+}
 
-const App = () => {
-  return (
-    <Provider store={store}>
-      <AppContent />
-    </Provider>
-  );
-};
-
-export default App; 
+export default App;

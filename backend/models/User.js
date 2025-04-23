@@ -5,21 +5,48 @@ const UserSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: [true, "Name is required"],
+      trim: true,
+      minlength: [2, "Name must be at least 2 characters long"],
     },
     email: {
       type: String,
-      required: true,
+      required: [true, "Email is required"],
       unique: true,
+      trim: true,
+      lowercase: true,
+      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
     },
     password: {
       type: String,
-      required: true,
+      required: [true, "Password is required"],
+      minlength: [6, "Password must be at least 6 characters"],
     },
     role: {
       type: String,
-      enum: ["employee", "team_lead", "solo_creator", "admin"],
-      required: true,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    oauthProvider: {
+      type: String,
+      enum: ["google", "github"],
+      required: false,
+    },
+    oauthId: {
+      type: String,
+      required: false,
+    },
+    googleId: {
+      type: String,
+      sparse: true,
+    },
+    picture: String,
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    lastLogin: {
+      type: Date,
     },
     teams: [
       {
@@ -39,18 +66,54 @@ const UserSchema = new mongoose.Schema(
   }
 );
 
+// Remove password from responses
+UserSchema.methods.toJSON = function () {
+  const user = this.toObject();
+  delete user.password;
+  return user;
+};
+
+// Static method to handle login
+UserSchema.statics.login = async function (email, password) {
+  const user = await this.findOne({ email });
+  if (!user) {
+    throw new Error("Invalid credentials");
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    throw new Error("Invalid credentials");
+  }
+
+  return user;
+};
+
 // Hash password before saving
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
-// Method to compare passwords
+// Method to compare password
 UserSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    throw new Error("Password comparison failed");
+  }
+};
+
+// Update last login timestamp
+UserSchema.methods.updateLastLogin = async function () {
+  this.lastLogin = new Date();
+  await this.save();
 };
 
 const User = mongoose.model("User", UserSchema);

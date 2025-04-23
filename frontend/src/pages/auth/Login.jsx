@@ -21,19 +21,57 @@ import {
   Fade,
   useTheme,
   useMediaQuery,
+  FormHelperText,
+  LinearProgress,
 } from "@mui/material";
 import {
   LockOutlined,
   Visibility,
   VisibilityOff,
   Google,
-  GitHub,
   LinkedIn,
   Email,
   Lock,
   ArrowForward,
 } from "@mui/icons-material";
-import { login, clearError } from "../../store/slices/authSlice";
+import { login, clearError, loadUser } from "../../store/slices/authSlice";
+// import axios from "../../utils/axios";
+import LoginBackground from "../../assets/images/login-illustration.jpg";
+// import DashboardOverview from "../../components/dashboard/DashboardOverview";
+// import CustomCard from "../../components/common/CustomCard";
+// import SearchInput from "../../components/common/SearchInput";
+// import Loading from "../components/common/Loading";
+// import Error from "../components/common/Error";
+import { styled } from "@mui/material/styles";
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  display: "flex",
+  flexDirection: { xs: "column", md: "row" },
+  minHeight: "80vh",
+  maxWidth: 1200,
+  margin: "2rem auto",
+  borderRadius: 20,
+  overflow: "hidden",
+  boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
+  background:
+    theme.palette.mode === "dark"
+      ? "linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 100%)"
+      : "linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)",
+}));
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  "& .MuiOutlinedInput-root": {
+    borderRadius: 12,
+    transition: "all 0.2s",
+    "&:hover": {
+      transform: "translateY(-1px)",
+    },
+    "&.Mui-focused": {
+      transform: "translateY(-2px)",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+    },
+  },
+}));
 
 const Login = () => {
   const theme = useTheme();
@@ -46,6 +84,10 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState({});
   const [loginAttempts, setLoginAttempts] = useState(0);
+  const [formTouched, setFormTouched] = useState({
+    email: false,
+    password: false,
+  });
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error, isAuthenticated } = useSelector(
@@ -88,36 +130,21 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      // Handle remember me
-      if (rememberMe) {
-        localStorage.setItem("rememberedEmail", formData.email);
-      } else {
-        localStorage.removeItem("rememberedEmail");
-      }
-
-      const result = await dispatch(login(formData));
-      if (!result.error) {
-        navigate("/dashboard");
-      } else {
-        setLoginAttempts((prev) => prev + 1);
-      }
+    console.log("Attempting login with:", formData); // Debug log
+    try {
+      await dispatch(login(formData)).unwrap();
+      // After successful login, load the user data
+      await dispatch(loadUser()).unwrap();
+    } catch (error) {
+      console.error("Login failed:", error);
     }
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const toggleShowPassword = () => {
@@ -128,116 +155,141 @@ const Login = () => {
     window.location.href = `${process.env.REACT_APP_API_URL}/auth/${provider}`;
   };
 
+  const handleGoogleLogin = () => {
+    const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/";
+    window.location.href = `${backendUrl}/auth/google`;
+  };
+
+  const handleBlur = (field) => {
+    setFormTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
+  const getFieldError = (field) => {
+    if (!formTouched[field]) return "";
+
+    switch (field) {
+      case "email":
+        if (!formData.email) return "Email is required";
+        if (!/\S+@\S+\.\S+/.test(formData.email)) return "Invalid email format";
+        return "";
+      case "password":
+        if (!formData.password) return "Password is required";
+        if (formData.password.length < 6)
+          return "Password must be at least 6 characters";
+        return "";
+      default:
+        return "";
+    }
+  };
+
   return (
-    <Box
+    <Container
+      maxWidth={false}
       sx={{
-        display: "flex",
         minHeight: "100vh",
-        bgcolor: theme.palette.background.default,
-        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        py: 4,
+        background: (theme) =>
+          theme.palette.mode === "dark"
+            ? "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)"
+            : "linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)",
       }}
     >
-      {/* Left side - Login form */}
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          p: 3,
-        }}
-      >
-        <Paper
-          elevation={6}
-          sx={{
-            p: 4,
-            width: "100%",
-            maxWidth: 450,
-            borderRadius: 2,
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
+      <StyledPaper>
+        {!isMobile && (
           <Box
             sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "4px",
-              background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-            }}
-          />
-
-          <Box
-            sx={{
-              mb: 4,
+              flex: "1",
               display: "flex",
               flexDirection: "column",
+              justifyContent: "center",
               alignItems: "center",
+              background: (theme) => `linear-gradient(135deg, 
+                ${theme.palette.primary.main} 0%, 
+                ${theme.palette.secondary.main} 100%)`,
+              color: "white",
+              p: 4,
+              position: "relative",
+              overflow: "hidden",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background:
+                  "url(\"data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h20v20H0V0zm10 10h10v10H10V10zm0-10h10v10H10V0z' fill='%23FFFFFF' fill-opacity='0.05'/%3E%3C/svg%3E\")",
+                backgroundSize: "20px 20px",
+              },
             }}
           >
-            <Avatar sx={{ m: 1, bgcolor: theme.palette.primary.main }}>
-              <LockOutlined />
-            </Avatar>
-            <Typography component="h1" variant="h4" fontWeight="bold">
-              Welcome Back
+            <Box
+              component="img"
+              src={LoginBackground}
+              alt="Login"
+              sx={{
+                width: "80%",
+                maxHeight: "60%",
+                objectFit: "contain",
+                mb: 3,
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={700}
+              textAlign="center"
+              gutterBottom
+            >
+              Welcome to CPMT
             </Typography>
             <Typography
-              variant="body2"
-              color="text.secondary"
-              align="center"
-              sx={{ mt: 1 }}
+              variant="body1"
+              textAlign="center"
+              sx={{ opacity: 0.8 }}
             >
-              Log in to your account to continue your workflow
+              Manage your projects with ease and efficiency
+            </Typography>
+          </Box>
+        )}
+
+        <Box
+          sx={{
+            flex: "1",
+            p: { xs: 3, sm: 6 },
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h4" fontWeight={700} gutterBottom>
+              Sign In
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Enter your credentials to access your account
             </Typography>
           </Box>
 
           {error && (
-            <Fade in={!!error}>
-              <Alert
-                severity="error"
-                sx={{ mb: 2 }}
-                action={
-                  <Button
-                    color="inherit"
-                    size="small"
-                    onClick={() => dispatch(clearError())}
-                  >
-                    Dismiss
-                  </Button>
-                }
-              >
-                {error}
-              </Alert>
-            </Fade>
-          )}
-
-          {loginAttempts >= 3 && (
-            <Fade in={loginAttempts >= 3}>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Having trouble?{" "}
-                <Link component={RouterLink} to="/forgot-password">
-                  Reset your password
-                </Link>
-              </Alert>
-            </Fade>
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
           )}
 
           <form onSubmit={handleSubmit}>
-            <TextField
+            <StyledTextField
               fullWidth
+              margin="normal"
               label="Email Address"
               name="email"
-              type="email"
               value={formData.email}
               onChange={handleChange}
-              margin="normal"
-              required
-              error={!!errors.email}
-              helperText={errors.email}
+              error={!!getFieldError("email")}
+              helperText={getFieldError("email")}
               disabled={loading}
+              onBlur={() => handleBlur("email")}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -245,20 +297,22 @@ const Login = () => {
                   </InputAdornment>
                 ),
               }}
+              sx={{ mb: 2 }}
+              autoComplete="email"
             />
 
             <TextField
               fullWidth
+              margin="normal"
               label="Password"
               name="password"
               type={showPassword ? "text" : "password"}
               value={formData.password}
               onChange={handleChange}
-              margin="normal"
-              required
-              error={!!errors.password}
-              helperText={errors.password}
+              error={!!getFieldError("password")}
+              helperText={getFieldError("password")}
               disabled={loading}
+              onBlur={() => handleBlur("password")}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -268,8 +322,7 @@ const Login = () => {
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={toggleShowPassword}
+                      onClick={() => setShowPassword(!showPassword)}
                       edge="end"
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
@@ -277,16 +330,21 @@ const Login = () => {
                   </InputAdornment>
                 ),
               }}
+              autoComplete="current-password"
             />
+
+            <FormHelperText sx={{ mt: 1, ml: 1 }}>
+              Password must be at least 6 characters long
+            </FormHelperText>
 
             <Box
               sx={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                mt: 1,
                 mb: 2,
-                flexDirection: isMobile ? "column" : "row",
+                mt: 1,
+                flexWrap: "wrap",
               }}
             >
               <FormControlLabel
@@ -303,43 +361,38 @@ const Login = () => {
                 component={RouterLink}
                 to="/forgot-password"
                 variant="body2"
-                color="primary"
-                sx={{ mt: isMobile ? 1 : 0 }}
+                sx={{ textDecoration: "none", fontWeight: 500 }}
               >
                 Forgot password?
               </Link>
             </Box>
 
             <Button
-              fullWidth
               type="submit"
+              fullWidth
               variant="contained"
               color="primary"
               size="large"
+              disabled={loading}
               sx={{
-                mt: 2,
-                py: 1.2,
-                position: "relative",
-                overflow: "hidden",
+                py: 2,
+                mt: 3,
+                mb: 2,
+                borderRadius: "12px",
+                fontSize: "1.1rem",
+                fontWeight: 600,
+                textTransform: "none",
+                background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+                boxShadow: "0 3px 15px rgba(33, 150, 243, 0.3)",
+                transition: "all 0.3s",
                 "&:hover": {
-                  "& .arrow": {
-                    transform: "translateX(4px)",
-                  },
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 6px 20px rgba(33, 150, 243, 0.4)",
                 },
               }}
-              disabled={loading}
-              endIcon={
-                <ArrowForward
-                  className="arrow"
-                  sx={{ transition: "transform 0.2s" }}
-                />
-              }
             >
               {loading ? (
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-                  Signing In
-                </Box>
+                <CircularProgress size={24} color="inherit" />
               ) : (
                 "Sign In"
               )}
@@ -348,146 +401,69 @@ const Login = () => {
 
           <Divider sx={{ my: 3 }}>
             <Typography variant="body2" color="text.secondary">
-              OR CONTINUE WITH
+              OR
             </Typography>
           </Divider>
 
-          <Grid container spacing={2}>
-            <Grid item xs={4}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => handleOAuthLogin("google")}
-                disabled={loading}
-                sx={{
-                  py: 1,
-                  color: "#DB4437",
-                  borderColor: "#DB4437",
-                  "&:hover": {
-                    borderColor: "#DB4437",
-                    backgroundColor: "rgba(219, 68, 55, 0.04)",
-                  },
-                }}
-              >
-                <Google />
-              </Button>
-            </Grid>
-            <Grid item xs={4}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => handleOAuthLogin("github")}
-                disabled={loading}
-                sx={{
-                  py: 1,
-                  color: "#333",
-                  borderColor: "#333",
-                  "&:hover": {
-                    borderColor: "#333",
-                    backgroundColor: "rgba(51, 51, 51, 0.04)",
-                  },
-                }}
-              >
-                <GitHub />
-              </Button>
-            </Grid>
-            <Grid item xs={4}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => handleOAuthLogin("linkedin")}
-                disabled={loading}
-                sx={{
-                  py: 1,
-                  color: "#0077B5",
-                  borderColor: "#0077B5",
-                  "&:hover": {
-                    borderColor: "#0077B5",
-                    backgroundColor: "rgba(0, 119, 181, 0.04)",
-                  },
-                }}
-              >
-                <LinkedIn />
-              </Button>
-            </Grid>
-          </Grid>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 2,
+              flexDirection: { xs: "column", sm: "row" },
+              justifyContent: "center",
+            }}
+          >
+            <Button
+              fullWidth
+              variant="outlined"
+              color="primary"
+              startIcon={<Google />}
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              sx={{
+                py: 1.5,
+                maxWidth: 250,
+                borderRadius: "10px",
+                transition: "all 0.2s",
+                "&:hover": {
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 4px 15px rgba(66, 133, 244, 0.2)",
+                },
+              }}
+            >
+              Sign in with Google
+            </Button>
+          </Box>
 
-          <Box sx={{ mt: 3, textAlign: "center" }}>
-            <Typography variant="body2">
+          <Box sx={{ mt: 4, textAlign: "center" }}>
+            <Typography variant="body2" color="text.secondary">
               Don't have an account?{" "}
               <Link
                 component={RouterLink}
                 to="/register"
-                fontWeight="bold"
-                color="primary"
+                variant="body2"
+                sx={{ fontWeight: 600, textDecoration: "none" }}
               >
-                Sign Up
+                Sign up here
               </Link>
             </Typography>
           </Box>
-        </Paper>
-      </Box>
 
-      {/* Right side - Background image with overlay for larger screens */}
-      {!isMobile && (
-        <Box
-          sx={{
-            flex: 1.2,
-            display: { xs: "none", md: "flex" },
-            position: "relative",
-            backgroundColor: theme.palette.primary.dark,
-            backgroundImage: `url('/assets/images/login-bg.jpg')`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        >
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
-              padding: 5,
-            }}
-          >
-            <Typography
-              variant="h3"
-              color="white"
-              fontWeight="bold"
-              align="center"
-              gutterBottom
-            >
-              Project Hub
-            </Typography>
-            <Typography
-              variant="h6"
-              color="white"
-              align="center"
-              sx={{ maxWidth: 500, mb: 4 }}
-            >
-              Streamline your workflow and boost team productivity with our
-              project management solution
-            </Typography>
-            <Button
-              variant="contained"
-              color="secondary"
-              size="large"
-              component={RouterLink}
-              to="/register"
-              sx={{ px: 4, py: 1.5 }}
-            >
-              Get Started
-            </Button>
-          </Box>
+          {loading && (
+            <Box sx={{ width: "100%", mt: 2 }}>
+              <LinearProgress variant="indeterminate" />
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 1, display: "block" }}
+              >
+                Signing you in...
+              </Typography>
+            </Box>
+          )}
         </Box>
-      )}
-    </Box>
+      </StyledPaper>
+    </Container>
   );
 };
 

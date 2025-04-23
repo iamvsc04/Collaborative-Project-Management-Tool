@@ -3,6 +3,7 @@ const router = express.Router();
 const Task = require("../models/Task");
 const Project = require("../models/Project");
 const auth = require("../middleware/auth");
+const bcrypt = require('bcryptjs');
 
 // Get all tasks for a project
 router.get("/project/:projectId", auth, async (req, res) => {
@@ -50,53 +51,104 @@ router.get("/:id", auth, async (req, res) => {
   }
 });
 
-// Create task
+// Create task (Leader only)
 router.post("/", auth, async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      status,
-      priority,
-      dueDate,
-      assignedTo,
-      project,
-    } = req.body;
+    const { title, description, deadline, priority, accessPassword } = req.body;
 
-    // Check if project exists and user has access
-    const projectDoc = await Project.findById(project);
-    if (!projectDoc) {
-      return res.status(404).json({ msg: "Project not found" });
-    }
-
-    if (
-      projectDoc.owner.toString() !== req.user.id &&
-      !projectDoc.members.includes(req.user.id)
-    ) {
-      return res.status(401).json({ msg: "Not authorized" });
-    }
+    // Hash the access password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(accessPassword, salt);
 
     const task = new Task({
       title,
       description,
-      status,
+      leader: req.user.id,
+      deadline,
       priority,
-      dueDate,
-      assignedTo,
-      project,
-      createdBy: req.user.id,
+      accessPassword: hashedPassword,
+      members: [{ user: req.user.id, role: 'leader' }]
     });
 
     await task.save();
 
-    // Add task to project's tasks array
-    projectDoc.tasks.push(task._id);
-    await projectDoc.save();
+    res.status(201).json({
+      success: true,
+      task: {
+        ...task.toObject(),
+        accessCode: task.accessCode // Include access code in response
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error creating task'
+    });
+  }
+});
 
-    res.json(task);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send("Server Error");
+// Join task
+router.post("/join", auth, async (req, res) => {
+  try {
+    const { accessCode, accessPassword } = req.body;
+
+    const task = await Task.findOne({ accessCode });
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found'
+      });
+    }
+
+    // Verify password
+    const isMatch = await bcrypt.compare(accessPassword, task.accessPassword);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid access password'
+      });
+    }
+
+    // Check if user is already a member
+    if (task.members.some(member => member.user.toString() === req.user.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Already a member of this task'
+      });
+    }
+
+    // Add user to members
+    task.members.push({ user: req.user.id });
+    await task.save();
+
+    res.json({
+      success: true,
+      task
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error joining task'
+    });
+  }
+});
+
+// Get user's tasks
+router.get("/", auth, async (req, res) => {
+  try {
+    const tasks = await Task.find({
+      'members.user': req.user.id
+    }).populate('members.user', 'name email');
+
+    res.json({
+      success: true,
+      tasks
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching tasks'
+    });
   }
 });
 

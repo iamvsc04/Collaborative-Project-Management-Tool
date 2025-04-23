@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import {
   Box,
   Button,
@@ -22,7 +23,12 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from "@mui/icons-material";
-import { fetchTasks, createTask, updateTask, deleteTask } from "../store/slices/taskSlice";
+import {
+  fetchTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+} from "../store/slices/taskSlice";
 import { fetchProjects } from "../store/slices/projectSlice";
 
 const Tasks = () => {
@@ -41,6 +47,21 @@ const Tasks = () => {
     assignedTo: "",
     dueDate: "",
   });
+
+  // Group tasks by status
+  const groupedTasks = tasks.reduce((acc, task) => {
+    if (!acc[task.status]) {
+      acc[task.status] = [];
+    }
+    acc[task.status].push(task);
+    return acc;
+  }, {});
+
+  const statusColumns = {
+    pending: { title: "Pending", color: "#ffd700" },
+    "in-progress": { title: "In Progress", color: "#ffa500" },
+    completed: { title: "Completed", color: "#90ee90" },
+  };
 
   useEffect(() => {
     dispatch(fetchTasks());
@@ -95,6 +116,30 @@ const Tasks = () => {
     }
   };
 
+  const onDragEnd = async (result) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination) return;
+
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
+
+    const task = tasks.find((t) => t._id === draggableId);
+    if (task) {
+      await dispatch(
+        updateTask({
+          id: task._id,
+          ...task,
+          status: destination.droppableId,
+        })
+      );
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -112,39 +157,87 @@ const Tasks = () => {
         </Button>
       </Box>
 
-      <Grid container spacing={3}>
-        {tasks.map((task) => (
-          <Grid item xs={12} sm={6} md={4} key={task._id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography variant="h6">{task.title}</Typography>
-                  <Box>
-                    <IconButton onClick={() => handleOpenDialog(task)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleDelete(task._id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                </Box>
-                <Typography color="textSecondary" gutterBottom>
-                  {task.description}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Grid container spacing={3}>
+          {Object.entries(statusColumns).map(([status, { title, color }]) => (
+            <Grid item xs={12} md={4} key={status}>
+              <Paper
+                sx={{
+                  p: 2,
+                  backgroundColor: alpha(color, 0.1),
+                  minHeight: "500px",
+                }}
+              >
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  {title}
                 </Typography>
-                <Typography variant="body2">
-                  Status: {task.status}
-                </Typography>
-                <Typography variant="body2">
-                  Priority: {task.priority}
-                </Typography>
-                <Typography variant="body2">
-                  Due: {new Date(task.dueDate).toLocaleDateString()}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                <Droppable droppableId={status}>
+                  {(provided) => (
+                    <Box
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      sx={{ minHeight: "400px" }}
+                    >
+                      {(groupedTasks[status] || []).map((task, index) => (
+                        <Draggable
+                          key={task._id}
+                          draggableId={task._id}
+                          index={index}
+                        >
+                          {(provided) => (
+                            <Card
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              sx={{ mb: 2 }}
+                            >
+                              <CardContent>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  <Typography variant="h6">
+                                    {task.title}
+                                  </Typography>
+                                  <Box>
+                                    <IconButton
+                                      onClick={() => handleOpenDialog(task)}
+                                    >
+                                      <EditIcon />
+                                    </IconButton>
+                                    <IconButton
+                                      onClick={() => handleDelete(task._id)}
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </Box>
+                                </Box>
+                                <Typography color="textSecondary" gutterBottom>
+                                  {task.description}
+                                </Typography>
+                                <Typography variant="body2">
+                                  Priority: {task.priority}
+                                </Typography>
+                                <Typography variant="body2">
+                                  Due:{" "}
+                                  {new Date(task.dueDate).toLocaleDateString()}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </Box>
+                  )}
+                </Droppable>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      </DragDropContext>
 
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>
@@ -238,4 +331,4 @@ const Tasks = () => {
   );
 };
 
-export default Tasks; 
+export default Tasks;

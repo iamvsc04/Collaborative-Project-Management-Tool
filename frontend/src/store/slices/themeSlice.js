@@ -1,34 +1,21 @@
 // src/store/slices/themeSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
-// Check if there's a saved theme preference in localStorage
-const getInitialTheme = () => {
-  const savedTheme = localStorage.getItem("theme");
-  // Return saved preference or check for system preference
-  if (savedTheme) {
-    return savedTheme === "dark";
-  }
-  // Check for system dark mode preference as fallback
-  return (
-    window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
+const initialState = {
+  darkMode: localStorage.getItem("darkMode") === "true",
 };
 
 const themeSlice = createSlice({
   name: "theme",
-  initialState: {
-    darkMode: getInitialTheme(),
-  },
+  initialState,
   reducers: {
     toggleTheme: (state) => {
       state.darkMode = !state.darkMode;
-      // Save to localStorage for persistence
-      localStorage.setItem("theme", state.darkMode ? "dark" : "light");
+      localStorage.setItem("darkMode", state.darkMode);
     },
     setDarkMode: (state, action) => {
       state.darkMode = action.payload;
-      localStorage.setItem("theme", state.darkMode ? "dark" : "light");
+      localStorage.setItem("darkMode", action.payload);
     },
   },
 });

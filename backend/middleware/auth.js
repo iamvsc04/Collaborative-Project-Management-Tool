@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const { formatErrorMessage } = require("../utils/helpers");
 
-module.exports = (req, res, next) => {
+const auth = (req, res, next) => {
   try {
     const token = req.header("Authorization")?.replace("Bearer ", "");
 
@@ -14,6 +15,9 @@ module.exports = (req, res, next) => {
     req.user = decoded.user;
     next();
   } catch (err) {
-    res.status(401).json({ message: "Token is not valid" });
+    console.error("Auth middleware error:", err.message);
+    return res.status(401).json({ message: "Token is not valid" });
   }
 };
+
+module.exports = auth;

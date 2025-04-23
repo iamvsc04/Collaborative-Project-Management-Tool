@@ -38,6 +38,7 @@ export const deleteTask = createAsyncThunk(
 
 const initialState = {
   tasks: [],
+  currentProjectTasks: [],
   loading: false,
   error: null,
 };
@@ -49,6 +50,10 @@ const taskSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    clearTasks: (state) => {
+      state.tasks = [];
+      state.currentProjectTasks = [];
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -59,11 +64,14 @@ const taskSlice = createSlice({
       })
       .addCase(fetchTasks.fulfilled, (state, action) => {
         state.loading = false;
-        state.tasks = action.payload;
+        state.currentProjectTasks = action.payload || [];
+        state.tasks = action.payload || [];
       })
       .addCase(fetchTasks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
+        state.currentProjectTasks = [];
+        state.tasks = [];
       })
       // Create Task
       .addCase(createTask.pending, (state) => {
@@ -73,6 +81,7 @@ const taskSlice = createSlice({
       .addCase(createTask.fulfilled, (state, action) => {
         state.loading = false;
         state.tasks.push(action.payload);
+        state.currentProjectTasks.push(action.payload);
       })
       .addCase(createTask.rejected, (state, action) => {
         state.loading = false;
@@ -90,6 +99,7 @@ const taskSlice = createSlice({
         );
         if (index !== -1) {
           state.tasks[index] = action.payload;
+          state.currentProjectTasks[index] = action.payload;
         }
       })
       .addCase(updateTask.rejected, (state, action) => {
@@ -104,6 +114,9 @@ const taskSlice = createSlice({
       .addCase(deleteTask.fulfilled, (state, action) => {
         state.loading = false;
         state.tasks = state.tasks.filter((task) => task._id !== action.payload);
+        state.currentProjectTasks = state.currentProjectTasks.filter(
+          (task) => task._id !== action.payload
+        );
       })
       .addCase(deleteTask.rejected, (state, action) => {
         state.loading = false;
@@ -112,5 +125,5 @@ const taskSlice = createSlice({
   },
 });
 
-export const { clearError } = taskSlice.actions;
+export const { clearError, clearTasks } = taskSlice.actions;
 export default taskSlice.reducer;

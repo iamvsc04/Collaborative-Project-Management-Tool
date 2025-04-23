@@ -1,27 +1,27 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
+import axios from "../../utils/axios";
 
 // Async thunks
 export const fetchTeam = createAsyncThunk(
   "team/fetchTeam",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get("/api/team");
-      return res.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.msg || "Error fetching team");
+      const response = await axios.get("/api/team");
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Failed to fetch team data");
     }
   }
 );
 
-export const addMember = createAsyncThunk(
+export const addTeamMember = createAsyncThunk(
   "team/addMember",
   async (memberData, { rejectWithValue }) => {
     try {
-      const res = await axios.post("/api/team", memberData);
-      return res.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.msg || "Error adding member");
+      const response = await axios.post("/api/team/members", memberData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Failed to add team member");
     }
   }
 );
@@ -55,7 +55,7 @@ export const removeMember = createAsyncThunk(
 );
 
 const initialState = {
-  team: [],
+  members: [],
   loading: false,
   error: null,
 };
@@ -70,31 +70,22 @@ const teamSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch Team
+      // Fetch Team Members
       .addCase(fetchTeam.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchTeam.fulfilled, (state, action) => {
         state.loading = false;
-        state.team = action.payload;
+        state.members = action.payload;
       })
       .addCase(fetchTeam.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
       // Add Member
-      .addCase(addMember.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(addMember.fulfilled, (state, action) => {
-        state.loading = false;
-        state.team.push(action.payload);
-      })
-      .addCase(addMember.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+      .addCase(addTeamMember.fulfilled, (state, action) => {
+        state.members.push(action.payload);
       })
       // Update Member
       .addCase(updateMember.pending, (state) => {
@@ -103,11 +94,11 @@ const teamSlice = createSlice({
       })
       .addCase(updateMember.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.team.findIndex(
+        const index = state.members.findIndex(
           (member) => member._id === action.payload._id
         );
         if (index !== -1) {
-          state.team[index] = action.payload;
+          state.members[index] = action.payload;
         }
       })
       .addCase(updateMember.rejected, (state, action) => {
@@ -121,7 +112,7 @@ const teamSlice = createSlice({
       })
       .addCase(removeMember.fulfilled, (state, action) => {
         state.loading = false;
-        state.team = state.team.filter(
+        state.members = state.members.filter(
           (member) => member._id !== action.payload
         );
       })

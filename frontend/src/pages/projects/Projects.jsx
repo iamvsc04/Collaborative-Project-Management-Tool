@@ -1,248 +1,198 @@
-import { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
-  Container,
+  Box,
+  Typography,
   Grid,
   Card,
   CardContent,
   CardActions,
-  Typography,
   Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
-  Box,
-  Alert,
+  Chip,
   CircularProgress,
-} from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { fetchProjects, createProject, updateProject, deleteProject } from '../../store/slices/projectSlice';
-
-const projectStatuses = ['planning', 'active', 'completed', 'on-hold'];
+  Alert,
+  IconButton,
+  Menu,
+  MenuItem,
+  Tooltip,
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  MoreVert as MoreVertIcon,
+  Visibility as ViewIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+} from "@mui/icons-material";
+import { fetchProjects, deleteProject } from "../../store/slices/projectSlice";
 
 const Projects = () => {
-  const [open, setOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    status: 'planning',
-    startDate: '',
-    endDate: '',
-  });
-
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { projects, loading, error } = useSelector((state) => state.projects);
+  const { user } = useSelector((state) => state.auth);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
 
   useEffect(() => {
     dispatch(fetchProjects());
   }, [dispatch]);
 
-  const handleClickOpen = () => {
-    setOpen(true);
-    setIsEditing(false);
-    setFormData({
-      name: '',
-      description: '',
-      status: 'planning',
-      startDate: '',
-      endDate: '',
-    });
+  const handleMenuOpen = (event, project) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedProject(project);
   };
 
-  const handleClose = () => {
-    setOpen(false);
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedProject(null);
   };
 
-  const handleEditProject = (project) => {
-    setIsEditing(true);
-    setFormData({
-      ...project,
-      startDate: project.startDate.split('T')[0],
-      endDate: project.endDate.split('T')[0],
-    });
-    setOpen(true);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (isEditing) {
-      await dispatch(updateProject({ id: formData._id, projectData: formData }));
-    } else {
-      await dispatch(createProject(formData));
+  const handleViewProject = (projectId) => {
+    console.log("Navigating to project with ID:", projectId);
+    if (!projectId) {
+      console.error("No project ID provided");
+      return;
     }
-    handleClose();
+    navigate(`/projects/${projectId}`);
+    handleMenuClose();
   };
 
-  const handleDeleteProject = async (id) => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      await dispatch(deleteProject(id));
+  const handleEditProject = (projectId) => {
+    navigate(`/projects/${projectId}/edit`);
+    handleMenuClose();
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (window.confirm("Are you sure you want to delete this project?")) {
+      await dispatch(deleteProject(projectId));
+      handleMenuClose();
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  if (loading && !projects.length) {
+  if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="60vh"
+      >
         <CircularProgress />
       </Box>
     );
   }
 
+  if (error) {
+    return (
+      <Box p={3}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
   return (
-    <Container>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-        <Typography variant="h4" component="h1">
-          Projects
-        </Typography>
+    <Box p={3}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+      >
+        <Typography variant="h4">Projects</Typography>
         <Button
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
-          onClick={handleClickOpen}
+          onClick={() => navigate("/projects/create")}
         >
-          New Project
+          Create Project
         </Button>
       </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
 
       <Grid container spacing={3}>
         {projects.map((project) => (
           <Grid item xs={12} sm={6} md={4} key={project._id}>
             <Card>
               <CardContent>
-                <Typography variant="h6" component="h2" gutterBottom>
-                  {project.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="flex-start"
+                >
+                  <Typography variant="h6" component="div" gutterBottom>
+                    {project.title}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => handleMenuOpen(e, project)}
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
+                </Box>
+                <Typography variant="body2" color="text.secondary" paragraph>
                   {project.description}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Status: {project.status}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Start: {new Date(project.startDate).toLocaleDateString()}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  End: {new Date(project.endDate).toLocaleDateString()}
-                </Typography>
+                <Box display="flex" gap={1} flexWrap="wrap">
+                  <Chip
+                    label={project.status}
+                    color={
+                      project.status === "Completed"
+                        ? "success"
+                        : project.status === "In Progress"
+                        ? "primary"
+                        : "default"
+                    }
+                    size="small"
+                  />
+                  <Chip
+                    label={`${project.members.length} members`}
+                    variant="outlined"
+                    size="small"
+                  />
+                </Box>
               </CardContent>
               <CardActions>
-                <Button size="small" onClick={() => navigate(`/projects/${project._id}`)}>
+                <Button
+                  size="small"
+                  startIcon={<ViewIcon />}
+                  onClick={() => {
+                    console.log("Project ID to view:", project._id);
+                    handleViewProject(project._id);
+                  }}
+                >
                   View Details
                 </Button>
-                <IconButton size="small" onClick={() => handleEditProject(project)}>
-                  <EditIcon />
-                </IconButton>
-                <IconButton size="small" onClick={() => handleDeleteProject(project._id)}>
-                  <DeleteIcon />
-                </IconButton>
               </CardActions>
             </Card>
           </Grid>
         ))}
       </Grid>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{isEditing ? 'Edit Project' : 'Create New Project'}</DialogTitle>
-        <DialogContent>
-          <Box component="form" noValidate sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="name"
-              label="Project Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="description"
-              label="Description"
-              name="description"
-              multiline
-              rows={4}
-              value={formData.description}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="status"
-              label="Status"
-              name="status"
-              select
-              value={formData.status}
-              onChange={handleChange}
-            >
-              {projectStatuses.map((status) => (
-                <MenuItem key={status} value={status}>
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="startDate"
-              label="Start Date"
-              name="startDate"
-              type="date"
-              value={formData.startDate}
-              onChange={handleChange}
-              InputLabelProps={{
-                shrink: true,
-              }}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="endDate"
-              label="End Date"
-              name="endDate"
-              type="date"
-              value={formData.endDate}
-              onChange={handleChange}
-              InputLabelProps={{
-                shrink: true,
-              }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {isEditing ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => handleViewProject(selectedProject?._id)}>
+          <ViewIcon fontSize="small" sx={{ mr: 1 }} />
+          View Details
+        </MenuItem>
+        {selectedProject?.owner._id === user?._id && (
+          <>
+            <MenuItem onClick={() => handleEditProject(selectedProject?._id)}>
+              <EditIcon fontSize="small" sx={{ mr: 1 }} />
+              Edit Project
+            </MenuItem>
+            <MenuItem onClick={() => handleDeleteProject(selectedProject?._id)}>
+              <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+              Delete Project
+            </MenuItem>
+          </>
+        )}
+      </Menu>
+    </Box>
   );
 };
 
-export default Projects; 
+export default Projects;

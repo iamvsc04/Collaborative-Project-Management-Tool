@@ -14,17 +14,20 @@ import {
   MenuItem,
   TextField,
   Typography,
+  Avatar,
+  Chip,
+  LinearProgress
 } from "@mui/material";
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from "@mui/icons-material";
-import { fetchTeam, addMember, updateMember, removeMember } from "../store/slices/teamSlice";
+import { fetchTeam } from "../store/slices/teamSlice";
 
 const Team = () => {
   const dispatch = useDispatch();
-  const { team, loading } = useSelector((state) => state.team);
+  const { members, loading, error } = useSelector((state) => state.team);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -68,66 +71,94 @@ const Team = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (editingMember) {
-      await dispatch(updateMember({ id: editingMember._id, ...formData }));
+      // Implement update member logic
     } else {
-      await dispatch(addMember(formData));
+      // Implement add member logic
     }
     handleCloseDialog();
   };
 
   const handleDelete = async (memberId) => {
     if (window.confirm("Are you sure you want to remove this team member?")) {
-      await dispatch(removeMember(memberId));
+      // Implement delete member logic
     }
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <LinearProgress />;
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 3 }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
   }
 
   return (
-    <Box sx={{ flexGrow: 1, p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4">Team Members</Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
+          onClick={() => {/* Handle add member */}}
         >
           Add Member
         </Button>
       </Box>
 
-      <Grid container spacing={3}>
-        {team.map((member) => (
-          <Grid item xs={12} sm={6} md={4} key={member._id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography variant="h6">{member.name}</Typography>
-                  <Box>
-                    <IconButton onClick={() => handleOpenDialog(member)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleDelete(member._id)}>
-                      <DeleteIcon />
-                    </IconButton>
+      {!members.length ? (
+        <Box sx={{ textAlign: 'center', py: 5 }}>
+          <Typography variant="h6" gutterBottom>
+            No Team Members Yet
+          </Typography>
+          <Typography color="text.secondary" paragraph>
+            Start building your team by adding members
+          </Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          {members.map((member) => (
+            <Grid item xs={12} sm={6} md={4} key={member._id}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Avatar
+                      src={member.avatar}
+                      alt={member.name}
+                      sx={{ width: 56, height: 56, mr: 2 }}
+                    />
+                    <Box>
+                      <Typography variant="h6">{member.name}</Typography>
+                      <Typography color="text.secondary">
+                        {member.role}
+                      </Typography>
+                    </Box>
                   </Box>
-                </Box>
-                <Typography color="textSecondary" gutterBottom>
-                  {member.email}
-                </Typography>
-                <Typography variant="body2">
-                  Role: {member.role}
-                </Typography>
-                <Typography variant="body2">
-                  Department: {member.department}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                  <Box sx={{ mb: 2 }}>
+                    <Chip
+                      label={member.status}
+                      color={member.status === 'Active' ? 'success' : 'default'}
+                      size="small"
+                      sx={{ mr: 1 }}
+                    />
+                    <Chip
+                      label={`${member.projects.length} Projects`}
+                      color="primary"
+                      size="small"
+                    />
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {member.email}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>

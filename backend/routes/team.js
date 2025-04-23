@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator");
 const Team = require("../models/Team.js");
 const User = require("../models/User.js");
 const auth = require("../middleware/auth.js");
+const Project = require('../models/Project');
 
 const router = express.Router();
 
@@ -194,6 +195,33 @@ router.delete("/:id", auth, async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server error");
+  }
+});
+
+// @route   GET /api/team
+// @desc    Get team members
+// @access  Private
+router.get('/', auth, async (req, res) => {
+  try {
+    const users = await User.find()
+      .select('-password')
+      .sort({ createdAt: -1 });
+
+    // Get project count for each user
+    const teamMembers = await Promise.all(
+      users.map(async (user) => {
+        const projectCount = await Project.countDocuments({ members: user._id });
+        return {
+          ...user.toObject(),
+          projectCount
+        };
+      })
+    );
+
+    res.json(teamMembers);
+  } catch (error) {
+    console.error('Team Error:', error);
+    res.status(500).send('Server Error');
   }
 });
 
