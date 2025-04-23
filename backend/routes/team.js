@@ -48,6 +48,12 @@ router.post(
     try {
       const { name, description } = req.body;
 
+      // Check if team with same name exists
+      const existingTeam = await Team.findOne({ name });
+      if (existingTeam) {
+        return res.status(400).json({ msg: "Team with this name already exists" });
+      }
+
       const team = new Team({
         name,
         description,
@@ -68,6 +74,51 @@ router.post(
     }
   }
 );
+
+// Join team by project name
+router.post("/join", auth, async (req, res) => {
+  try {
+    const { projectName } = req.body;
+    
+    // Find project by name
+    const project = await Project.findOne({ name: projectName });
+    if (!project) {
+      return res.status(404).json({ msg: "Project not found" });
+    }
+
+    // Find or create team with project name
+    let team = await Team.findOne({ name: projectName });
+    if (!team) {
+      team = new Team({
+        name: projectName,
+        description: `Team for ${projectName} project`,
+        members: [req.user.id],
+        projects: [project._id],
+      });
+      await team.save();
+
+      // Add team to project
+      await Project.findByIdAndUpdate(project._id, {
+        $push: { teams: team._id },
+      });
+    } else if (team.members.includes(req.user.id)) {
+      return res.status(400).json({ msg: "You are already a member of this team" });
+    } else {
+      team.members.push(req.user.id);
+      await team.save();
+    }
+
+    // Add team to user's teams
+    await User.findByIdAndUpdate(req.user.id, {
+      $addToSet: { teams: team._id },
+    });
+
+    res.json(team);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Server error");
+  }
+});
 
 // Update team
 router.put("/:id", auth, async (req, res) => {

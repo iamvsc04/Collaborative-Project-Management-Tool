@@ -153,169 +153,10 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const { user } = useSelector((state) => state.auth);
-
-  // Try to get data from Redux state
-  const dashboardData = useSelector((state) => state.dashboard);
-  const [loading, setLoading] = useState(true);
-
-  // Mock data for development and testing
-  const mockData = {
-    stats: {
-      totalProjects: 24,
-      activeProjects: 12,
-      totalTasks: 86,
-      completedTasks: 56,
-    },
-    recentProjects: [
-      {
-        id: "1",
-        name: "E-commerce Platform",
-        description:
-          "Building a responsive e-commerce platform with React and Node.js",
-        progress: 75,
-        status: "In Progress",
-        dueDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
-        team: [
-          {
-            id: "u1",
-            name: "John Doe",
-            avatar: "https://i.pravatar.cc/150?img=1",
-          },
-          {
-            id: "u2",
-            name: "Jane Smith",
-            avatar: "https://i.pravatar.cc/150?img=5",
-          },
-          {
-            id: "u3",
-            name: "Mike Johnson",
-            avatar: "https://i.pravatar.cc/150?img=8",
-          },
-        ],
-      },
-      {
-        id: "2",
-        name: "Mobile App Development",
-        description: "Creating a cross-platform mobile app using React Native",
-        progress: 45,
-        status: "In Progress",
-        dueDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
-        team: [
-          {
-            id: "u2",
-            name: "Jane Smith",
-            avatar: "https://i.pravatar.cc/150?img=5",
-          },
-          {
-            id: "u4",
-            name: "Sarah Williams",
-            avatar: "https://i.pravatar.cc/150?img=9",
-          },
-        ],
-      },
-      {
-        id: "3",
-        name: "UI/UX Redesign",
-        description:
-          "Revamping the user interface and experience of our main product",
-        progress: 90,
-        status: "Completed",
-        dueDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        team: [
-          {
-            id: "u1",
-            name: "John Doe",
-            avatar: "https://i.pravatar.cc/150?img=1",
-          },
-          {
-            id: "u5",
-            name: "Alex Turner",
-            avatar: "https://i.pravatar.cc/150?img=3",
-          },
-        ],
-      },
-    ],
-    recentActivities: [
-      {
-        id: "a1",
-        type: "task_completed",
-        description: "John Doe completed the Login Page UI development task",
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        user: {
-          id: "u1",
-          name: "John Doe",
-          avatar: "https://i.pravatar.cc/150?img=1",
-        },
-      },
-      {
-        id: "a2",
-        type: "new_comment",
-        description: "Jane Smith commented on API Integration document",
-        timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-        user: {
-          id: "u2",
-          name: "Jane Smith",
-          avatar: "https://i.pravatar.cc/150?img=5",
-        },
-      },
-      {
-        id: "a3",
-        type: "deadline_updated",
-        description: "Mike Johnson updated the deadline for Database Design",
-        timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-        user: {
-          id: "u3",
-          name: "Mike Johnson",
-          avatar: "https://i.pravatar.cc/150?img=8",
-        },
-      },
-      {
-        id: "a4",
-        type: "user_joined",
-        description: "Sarah Williams joined the E-commerce Platform project",
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        user: {
-          id: "u4",
-          name: "Sarah Williams",
-          avatar: "https://i.pravatar.cc/150?img=9",
-        },
-      },
-    ],
-    upcomingEvents: [
-      {
-        id: "e1",
-        title: "Weekly Team Meeting",
-        date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-        time: "10:00 AM - 11:30 AM",
-        location: "Conference Room A",
-      },
-      {
-        id: "e2",
-        title: "Project Deadline: UI/UX Redesign",
-        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-        time: "All Day",
-      },
-      {
-        id: "e3",
-        title: "Client Presentation",
-        date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-        time: "2:00 PM - 3:30 PM",
-      },
-    ],
-  };
+  const { stats, recentProjects, recentActivities, upcomingEvents, loading } = useSelector((state) => state.dashboard);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        await dispatch(fetchDashboardData());
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    dispatch(fetchDashboardData());
   }, [dispatch]);
 
   const formatDate = (dateString) => {
@@ -364,6 +205,10 @@ const Dashboard = () => {
     }
   };
 
+  const handleQuickAction = (action) => {
+    navigate(action.path, { state: action.state });
+  };
+
   const quickActions = [
     {
       title: "Create New Project",
@@ -393,7 +238,8 @@ const Dashboard = () => {
           {
             title: "Join a Team",
             icon: <JoinTeamIcon />,
-            path: "/teams/join",
+            path: "/team",
+            state: { showJoinDialog: true },
             description: "Join an existing team",
             color: "secondary",
           },
@@ -412,8 +258,6 @@ const Dashboard = () => {
       </Box>
     );
   }
-
-  const data = dashboardData || mockData;
 
   return (
     <Box>
@@ -435,50 +279,33 @@ const Dashboard = () => {
         <Grid container spacing={3}>
           {quickActions.map((action) => (
             <Grid item xs={12} sm={6} md={4} key={action.title}>
-              <QuickActionButton
-                fullWidth
-                variant="outlined"
-                color={action.color}
-                startIcon={action.icon}
-                onClick={() => navigate(action.path)}
-              >
-                <Box>
-                  <Typography variant="subtitle1" fontWeight="bold">
-                    {action.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
+              <StyledCard>
+                <CardContent>
+                  <Box display="flex" alignItems="center" mb={2}>
+                    <Avatar sx={{ bgcolor: `${action.color}.main`, mr: 2 }}>
+                      {action.icon}
+                    </Avatar>
+                    <Typography variant="h6">{action.title}</Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" paragraph>
                     {action.description}
                   </Typography>
-                </Box>
-              </QuickActionButton>
+                </CardContent>
+                <CardActions>
+                  <Button
+                    variant="contained"
+                    color={action.color}
+                    onClick={() => handleQuickAction(action)}
+                    startIcon={action.icon}
+                  >
+                    {action.title}
+                  </Button>
+                </CardActions>
+              </StyledCard>
             </Grid>
           ))}
         </Grid>
       </Box>
-
-      {/* Stats Section */}
-      <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatsCard color="primary">
-            <CardContent>
-              <Box display="flex" alignItems="center" mb={2}>
-                <IconBox color="primary">
-                  <DashboardIcon />
-                </IconBox>
-                <Box ml={2}>
-                  <Typography variant="h6" color="text.secondary">
-                    Total Projects
-                  </Typography>
-                  <Typography variant="h4">
-                    {data.stats?.totalProjects || 0}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </StatsCard>
-        </Grid>
-        {/* ... other stats cards ... */}
-      </Grid>
 
       {/* Recent Projects */}
       <Box mb={4}>
@@ -488,7 +315,7 @@ const Dashboard = () => {
           alignItems="center"
           mb={3}
         >
-          <Typography variant="h5">Recent Projects</Typography>
+          <Typography variant="h5">Your Projects</Typography>
           <Button
             variant="contained"
             color="primary"
@@ -498,66 +325,94 @@ const Dashboard = () => {
             New Project
           </Button>
         </Box>
-        <Grid container spacing={3}>
-          {data.recentProjects?.map((project) => (
-            <Grid item xs={12} sm={6} md={4} key={project.id}>
-              <StyledCard>
-                <CardContent>
-                  <Box
-                    display="flex"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    mb={2}
-                  >
-                    <Typography variant="h6">{project.name}</Typography>
-                    <Chip
-                      label={project.status}
-                      color={getStatusColor(project.status)}
-                      size="small"
-                    />
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    {project.description}
-                  </Typography>
-                  <Box mb={2}>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      gutterBottom
+        {recentProjects?.length > 0 ? (
+          <Grid container spacing={3}>
+            {recentProjects.map((project) => (
+              <Grid item xs={12} sm={6} md={4} key={project.id}>
+                <StyledCard>
+                  <CardContent>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      mb={2}
                     >
-                      Progress
+                      <Typography variant="h6">{project.title}</Typography>
+                      <Chip
+                        label={project.status}
+                        color={getStatusColor(project.status)}
+                        size="small"
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                      {project.description}
                     </Typography>
-                    <ProgressBar
-                      color="primary"
-                      value={project.progress || 0}
-                    />
-                    <Typography variant="body2" align="right">
-                      {project.progress || 0}%
-                    </Typography>
-                  </Box>
-                  <Box
-                    display="flex"
-                    justifyContent="space-between"
-                    alignItems="center"
-                  >
-                    <AvatarGroup max={4}>
-                      {project.team?.map((member) => (
-                        <Avatar
-                          key={member.id}
-                          alt={member.name}
-                          src={member.avatar}
-                        />
-                      ))}
-                    </AvatarGroup>
-                    <Typography variant="caption" color="text.secondary">
-                      Due: {formatDate(project.dueDate)}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </StyledCard>
-            </Grid>
-          ))}
-        </Grid>
+                    <Box mb={2}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        Progress
+                      </Typography>
+                      <ProgressBar
+                        color="primary"
+                        value={project.progress || 0}
+                      />
+                      <Typography variant="body2" align="right">
+                        {project.progress || 0}%
+                      </Typography>
+                    </Box>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <AvatarGroup max={4}>
+                        {project.members?.map((member) => (
+                          <Avatar
+                            key={member.id}
+                            alt={member.name}
+                            src={member.avatar}
+                          >
+                            {member.name?.[0]}
+                          </Avatar>
+                        ))}
+                      </AvatarGroup>
+                      <Typography variant="caption" color="text.secondary">
+                        Due: {formatDate(project.deadline)}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </StyledCard>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Box
+            display="flex"
+            flexDirection="column"
+            alignItems="center"
+            justifyContent="center"
+            p={4}
+          >
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No Projects Yet
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center">
+              Start by creating a new project or joining an existing one
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => navigate("/projects/create")}
+              sx={{ mt: 2 }}
+            >
+              Create Project
+            </Button>
+          </Box>
+        )}
       </Box>
     </Box>
   );

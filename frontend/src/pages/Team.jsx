@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useLocation } from "react-router-dom";
 import {
   Box,
   Button,
@@ -17,26 +18,27 @@ import {
   Avatar,
   Chip,
   LinearProgress,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  ListItemSecondaryAction,
+  Alert,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Group as GroupIcon,
+  PersonAdd as JoinIcon,
 } from "@mui/icons-material";
-import { fetchTeam, addTeamMember, updateMember, removeMember } from "../store/slices/teamSlice";
+import { fetchTeam, addTeamMember, updateMember, removeMember, joinTeam } from "../store/slices/teamSlice";
 
 const Team = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const { members, loading, error } = useSelector((state) => state.team);
   const { user } = useSelector((state) => state.auth);
 
   const [openDialog, setOpenDialog] = useState(false);
+  const [openJoinDialog, setOpenJoinDialog] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -44,10 +46,20 @@ const Team = () => {
     role: "member",
     department: "",
   });
+  const [joinFormData, setJoinFormData] = useState({
+    projectName: "",
+  });
+  const [formError, setFormError] = useState(null);
+  const [joinError, setJoinError] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
     dispatch(fetchTeam());
-  }, [dispatch]);
+    // Check if we should show the join dialog
+    if (location.state?.showJoinDialog) {
+      handleOpenJoinDialog();
+    }
+  }, [dispatch, location.state]);
 
   const handleOpenDialog = (member = null) => {
     if (member) {
@@ -56,7 +68,7 @@ const Team = () => {
         name: member.name,
         email: member.email,
         role: member.role,
-        department: member.department,
+        department: member.department || "",
       });
     } else {
       setEditingMember(null);
@@ -67,16 +79,20 @@ const Team = () => {
         department: "",
       });
     }
+    setFormError(null);
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingMember(null);
+    setFormError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError(null);
+    
     try {
       if (editingMember) {
         await dispatch(updateMember({ id: editingMember._id, ...formData })).unwrap();
@@ -86,6 +102,7 @@ const Team = () => {
       handleCloseDialog();
     } catch (error) {
       console.error("Error submitting form:", error);
+      setFormError(error.message || "Failed to submit form. Please try again.");
     }
   };
 
@@ -99,32 +116,64 @@ const Team = () => {
     }
   };
 
+  const handleOpenJoinDialog = () => {
+    setJoinFormData({ projectName: "" });
+    setJoinError(null);
+    setOpenJoinDialog(true);
+  };
+
+  const handleCloseJoinDialog = () => {
+    setOpenJoinDialog(false);
+    setJoinError(null);
+  };
+
+  const handleJoinSubmit = async (e) => {
+    e.preventDefault();
+    setJoinError(null);
+    
+    try {
+      await dispatch(joinTeam(joinFormData.projectName)).unwrap();
+      handleCloseJoinDialog();
+    } catch (error) {
+      console.error("Error joining team:", error);
+      setJoinError(error.message || "Failed to join team. Please try again.");
+    }
+  };
+
   if (loading) {
     return <LinearProgress />;
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ textAlign: 'center', py: 3 }}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    );
   }
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4">Team Members</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add Member
-        </Button>
+        <Box>
+          <Button
+            variant="outlined"
+            startIcon={<JoinIcon />}
+            onClick={handleOpenJoinDialog}
+            sx={{ mr: 2 }}
+          >
+            Join Team
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Add Member
+          </Button>
+        </Box>
       </Box>
 
-      {!members.length ? (
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {!members?.length ? (
         <Box sx={{ textAlign: 'center', py: 5 }}>
           <Typography variant="h6" gutterBottom>
             No Team Members Yet
@@ -175,6 +224,11 @@ const Team = () => {
         </DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
+            {formError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {formError}
+              </Alert>
+            )}
             <TextField
               autoFocus
               margin="dense"
@@ -217,6 +271,35 @@ const Team = () => {
             <Button onClick={handleCloseDialog}>Cancel</Button>
             <Button type="submit" variant="contained">
               {editingMember ? "Update" : "Add"}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      <Dialog open={openJoinDialog} onClose={handleCloseJoinDialog}>
+        <DialogTitle>Join Team</DialogTitle>
+        <form onSubmit={handleJoinSubmit}>
+          <DialogContent>
+            {joinError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {joinError}
+              </Alert>
+            )}
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Project Name"
+              fullWidth
+              value={joinFormData.projectName}
+              onChange={(e) => setJoinFormData({ projectName: e.target.value })}
+              required
+              helperText="Enter the name of the project to join its team"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseJoinDialog}>Cancel</Button>
+            <Button type="submit" variant="contained">
+              Join
             </Button>
           </DialogActions>
         </form>

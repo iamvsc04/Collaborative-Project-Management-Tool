@@ -71,7 +71,7 @@ const Layout = () => {
   const menuItems = [
     { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
     { text: "Projects", icon: <Assignment />, path: "/projects" },
-    { text: "Teams", icon: <TeamIcon />, path: "/teams" },
+    { text: "Teams", icon: <TeamIcon />, path: "/team" },
     { text: "Tasks", icon: <Assignment />, path: "/tasks" },
   ];
 
@@ -87,7 +87,12 @@ const Layout = () => {
             path: "/employees",
           },
         ]
-      : [{ text: "Join Team", icon: <JoinTeamIcon />, path: "/teams/join" }]),
+      : [{ 
+          text: "Join Team", 
+          icon: <JoinTeamIcon />, 
+          path: "/team",
+          state: { showJoinDialog: true }
+        }]),
   ];
 
   const drawer = (
@@ -136,7 +141,7 @@ const Layout = () => {
             button
             key={item.text}
             onClick={() => {
-              navigate(item.path);
+              navigate(item.path, { state: item.state });
               if (isMobile) setDrawerOpen(false);
             }}
           >

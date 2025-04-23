@@ -9,7 +9,7 @@ export const fetchTeam = createAsyncThunk(
       const response = await axios.get("/team");
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || "Failed to fetch team data");
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch team data");
     }
   }
 );
@@ -18,10 +18,10 @@ export const addTeamMember = createAsyncThunk(
   "team/addMember",
   async (memberData, { rejectWithValue }) => {
     try {
-      const response = await axios.post("/team/members", memberData);
+      const response = await axios.post("/team", memberData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || "Failed to add team member");
+      return rejectWithValue(error.response?.data?.message || "Failed to add team member");
     }
   }
 );
@@ -30,10 +30,10 @@ export const updateMember = createAsyncThunk(
   "team/updateMember",
   async ({ id, ...memberData }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`/team/members/${id}`, memberData);
+      const response = await axios.put(`/team/${id}`, memberData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || "Failed to update member");
+      return rejectWithValue(error.response?.data?.message || "Failed to update member");
     }
   }
 );
@@ -42,10 +42,22 @@ export const removeMember = createAsyncThunk(
   "team/removeMember",
   async (id, { rejectWithValue }) => {
     try {
-      await axios.delete(`/team/members/${id}`);
+      await axios.delete(`/team/${id}`);
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || "Failed to remove member");
+      return rejectWithValue(error.response?.data?.message || "Failed to remove member");
+    }
+  }
+);
+
+export const joinTeam = createAsyncThunk(
+  "team/joinTeam",
+  async (projectName, { rejectWithValue }) => {
+    try {
+      const response = await axios.post("/team/join", { projectName });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to join team");
     }
   }
 );
@@ -122,6 +134,20 @@ const teamSlice = createSlice({
         );
       })
       .addCase(removeMember.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Join Team
+      .addCase(joinTeam.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(joinTeam.fulfilled, (state, action) => {
+        state.loading = false;
+        // Refresh team members after joining
+        state.members = action.payload.members;
+      })
+      .addCase(joinTeam.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

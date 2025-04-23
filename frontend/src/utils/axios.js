@@ -73,7 +73,7 @@ axiosInstance.interceptors.response.use(
         if (window.location.pathname !== '/login') {
           store.dispatch({ type: 'auth/logout' });
           window.location.href = '/login';
-        }
+    }
         return Promise.reject(error);
       }
     }

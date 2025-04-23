@@ -689,28 +689,6 @@ const Register = () => {
                 >
                   <GoogleIcon />
                 </IconButton>
-                <IconButton
-                  onClick={() => handleOAuthLogin("github")}
-                  size="large"
-                  sx={{
-                    color: "#333",
-                    bgcolor: alpha("#333", 0.1),
-                    "&:hover": { bgcolor: alpha("#333", 0.2) },
-                  }}
-                >
-                  <GitHubIcon />
-                </IconButton>
-                <IconButton
-                  onClick={() => handleOAuthLogin("linkedin")}
-                  size="large"
-                  sx={{
-                    color: "#0077B5",
-                    bgcolor: alpha("#0077B5", 0.1),
-                    "&:hover": { bgcolor: alpha("#0077B5", 0.2) },
-                  }}
-                >
-                  <LinkedInIcon />
-                </IconButton>
               </Box>
             </Box>
 

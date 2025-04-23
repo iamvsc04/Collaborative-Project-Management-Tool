@@ -18,6 +18,7 @@ import Projects from "./pages/projects/Projects";
 import CreateProject from "./pages/projects/CreateProject";
 import JoinProject from "./pages/projects/JoinProject";
 import ProjectDetails from "./pages/projects/ProjectDetails";
+import Team from "./pages/Team";
 
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useSelector((state) => state.auth);
@@ -77,6 +78,7 @@ function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="team" element={<Team />} />
             <Route path="projects">
               <Route index element={<Projects />} />
               <Route path="create" element={<CreateProject />} />

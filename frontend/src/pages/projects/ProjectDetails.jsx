@@ -88,11 +88,11 @@ const ProjectDetails = () => {
         }
       }
 
-      if (projectId) {
-        dispatch(fetchProjectById(projectId));
-      } else {
-        navigate("/projects");
-      }
+    if (projectId) {
+      dispatch(fetchProjectById(projectId));
+    } else {
+      navigate("/projects");
+    }
     };
 
     initializeAuth();
@@ -224,9 +224,9 @@ const ProjectDetails = () => {
             mb={2}
           >
             <Typography variant="h4">{currentProject.title}</Typography>
-            <Box>
-              <Button
-                variant="outlined"
+              <Box>
+                <Button
+                  variant="outlined"
                 startIcon={isEditing ? <SaveIcon /> : <EditIcon />}
                 onClick={() => {
                   if (isEditing) {
@@ -234,19 +234,19 @@ const ProjectDetails = () => {
                   }
                   setIsEditing(!isEditing);
                 }}
-                sx={{ mr: 1 }}
-              >
+                  sx={{ mr: 1 }}
+                >
                 {isEditing ? "Save" : "Edit"}
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={handleDeleteProject}
-              >
-                Delete
-              </Button>
-            </Box>
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={handleDeleteProject}
+                >
+                  Delete
+                </Button>
+              </Box>
           </Box>
           <Chip
             label={currentProject.status}
@@ -283,9 +283,9 @@ const ProjectDetails = () => {
                 variant="outlined"
               />
             ) : (
-              <Typography variant="body1" paragraph>
-                {currentProject.description}
-              </Typography>
+            <Typography variant="body1" paragraph>
+              {currentProject.description}
+            </Typography>
             )}
           </Paper>
         </Grid>
@@ -300,12 +300,12 @@ const ProjectDetails = () => {
               mb={2}
             >
               <Typography variant="h6">Team Members</Typography>
-              <Button
-                startIcon={<PersonAddIcon />}
-                onClick={() => setAddMemberDialogOpen(true)}
-              >
-                Add Member
-              </Button>
+                <Button
+                  startIcon={<PersonAddIcon />}
+                  onClick={() => setAddMemberDialogOpen(true)}
+                >
+                  Add Member
+                </Button>
             </Box>
             <List>
               <ListItem>
@@ -327,12 +327,12 @@ const ProjectDetails = () => {
                     primary={member.name}
                     secondary={member.email}
                   />
-                  <IconButton
-                    edge="end"
-                    onClick={() => handleRemoveMember(member._id)}
-                  >
-                    <PersonRemoveIcon />
-                  </IconButton>
+                    <IconButton
+                      edge="end"
+                      onClick={() => handleRemoveMember(member._id)}
+                    >
+                      <PersonRemoveIcon />
+                    </IconButton>
                 </ListItem>
               ))}
             </List>
