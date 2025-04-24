@@ -9,12 +9,9 @@ const AuthCallback = () => {
   useEffect(() => {
     const token = searchParams.get("token");
     if (token) {
-      // Store token
       localStorage.setItem("token", token);
-      // Redirect to dashboard
       navigate("/dashboard");
     } else {
-      // Handle error
       navigate("/login?error=auth_failed");
     }
   }, [navigate, searchParams]);

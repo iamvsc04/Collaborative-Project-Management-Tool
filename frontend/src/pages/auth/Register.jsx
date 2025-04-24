@@ -57,8 +57,6 @@ import {
   Info,
 } from "@mui/icons-material";
 import { register } from "../../store/slices/authSlice";
-
-// Styled components for custom Stepper
 const ColorlibConnector = styled(StepConnector)(({ theme }) => ({
   [`&.${stepConnectorClasses.alternativeLabel}`]: {
     top: 22,
@@ -120,7 +118,6 @@ const steps = [
   },
 ];
 
-// Password strength indicator
 const PasswordStrengthIndicator = ({ password }) => {
   const calculateStrength = (pwd) => {
     if (!pwd) return 0;
@@ -182,7 +179,6 @@ const PasswordStrengthIndicator = ({ password }) => {
   );
 };
 
-// Custom Step Icon
 function ColorlibStepIcon(props) {
   const { active, completed, className, icon } = props;
 
@@ -221,8 +217,6 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formTouched, setFormTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
-
-  // Effect to validate fields on change if they've been touched
   useEffect(() => {
     if (Object.keys(formTouched).length > 0) {
       validateCurrentStep(true);
@@ -233,7 +227,6 @@ const Register = () => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
 
-    // Mark field as touched
     if (!formTouched[name]) {
       setFormTouched({ ...formTouched, [name]: true });
     }
@@ -241,8 +234,6 @@ const Register = () => {
 
   const validateCurrentStep = (partialValidation = false) => {
     const newErrors = {};
-
-    // Only validate fields that have been touched if partial validation
     const shouldValidate = (field) => !partialValidation || formTouched[field];
 
     switch (activeStep) {
@@ -322,18 +313,14 @@ const Register = () => {
   };
 
   const handleNext = () => {
-    // Mark all fields in current step as touched
     const currentFields = getStepFields(activeStep);
     const newTouched = { ...formTouched };
     currentFields.forEach((field) => {
       newTouched[field] = true;
     });
     setFormTouched(newTouched);
-
-    // Validate step
     if (validateCurrentStep()) {
       setActiveStep((prevStep) => prevStep + 1);
-      // Smooth scroll to top on mobile
       if (isMobile) {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -393,7 +380,6 @@ const Register = () => {
   };
 
   const handleOAuthLogin = (provider) => {
-    // Redirect to OAuth provider
     window.location.href = `${import.meta.env.VITE_API_URL}/auth/${provider}`;
   };
 
@@ -405,7 +391,6 @@ const Register = () => {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  // Get step content based on active step
   const getStepContent = (step) => {
     switch (step) {
       case 0:
@@ -589,7 +574,7 @@ const Register = () => {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              error={!!errors.email}
+              error={!errors.email}
               helperText={errors.email}
               margin="normal"
               required
@@ -728,7 +713,6 @@ const Register = () => {
           boxShadow: 3,
         }}
       >
-        {/* Left side - Info panel (hidden on small screens) */}
         {!isMedium && (
           <Box
             sx={{
@@ -832,8 +816,6 @@ const Register = () => {
             </Box>
           </Box>
         )}
-
-        {/* Right side - Form */}
         <Box
           sx={{
             flex: 1,
@@ -860,7 +842,6 @@ const Register = () => {
               {isMedium ? "Join Project Hub" : "Create Account"}
             </Typography>
 
-            {/* Mobile login link */}
             {isMedium && (
               <Button
                 variant="text"
@@ -872,7 +853,6 @@ const Register = () => {
             )}
           </Box>
 
-          {/* Custom Stepper */}
           <Stepper
             activeStep={activeStep}
             alternativeLabel={!isMobile}

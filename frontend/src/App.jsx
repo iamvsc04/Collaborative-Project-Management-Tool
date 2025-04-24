@@ -35,10 +35,8 @@ function App() {
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    // Check if we have a token in localStorage
     const token = localStorage.getItem("token");
     if (token) {
-      // If we have a token, try to load the user
       dispatch(loadUser());
     }
   }, [dispatch]);
@@ -53,7 +51,7 @@ function App() {
         }}
       >
         <Routes>
-          {/* Public routes */}
+          =
           <Route
             path="/login"
             element={
@@ -66,8 +64,6 @@ function App() {
               !isAuthenticated ? <Register /> : <Navigate to="/dashboard" />
             }
           />
-
-          {/* Protected routes */}
           <Route
             path="/"
             element={
@@ -86,8 +82,6 @@ function App() {
               <Route path=":projectId" element={<ProjectDetails />} />
             </Route>
           </Route>
-
-          {/* Catch all route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

@@ -35,13 +35,7 @@ import {
   ArrowForward,
 } from "@mui/icons-material";
 import { login, clearError, loadUser } from "../../store/slices/authSlice";
-// import axios from "../../utils/axios";
 import LoginBackground from "../../assets/images/login-illustration.jpg";
-// import DashboardOverview from "../../components/dashboard/DashboardOverview";
-// import CustomCard from "../../components/common/CustomCard";
-// import SearchInput from "../../components/common/SearchInput";
-// import Loading from "../components/common/Loading";
-// import Error from "../components/common/Error";
 import { styled } from "@mui/material/styles";
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -130,10 +124,9 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Attempting login with:", formData); // Debug log
+    console.log("Attempting login with:", formData); 
     try {
       await dispatch(login(formData)).unwrap();
-      // After successful login, load the user data
       await dispatch(loadUser()).unwrap();
     } catch (error) {
       console.error("Login failed:", error);

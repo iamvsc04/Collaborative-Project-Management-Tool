@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { getCurrentUser } from '../../store/slices/authSlice';
+import { useEffect } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { getCurrentUser } from "../../store/slices/authSlice";
 
 const ProtectedRoute = ({ children, roles = [] }) => {
   const dispatch = useDispatch();
@@ -15,7 +15,7 @@ const ProtectedRoute = ({ children, roles = [] }) => {
   }, [dispatch, isAuthenticated, loading]);
 
   if (loading) {
-    return <div>Loading...</div>; // You can replace this with a loading spinner
+    return <div>Loading...</div>;
   }
 
   if (!isAuthenticated) {
@@ -29,4 +29,4 @@ const ProtectedRoute = ({ children, roles = [] }) => {
   return children;
 };
 
-export default ProtectedRoute; 
+export default ProtectedRoute;
